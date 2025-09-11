@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PersonalizedU- AI-Powered Learning</title>
+    
+    <!-- Tailwind CDN config must come before the Tailwind script -->
+    <script>
+        window.tailwind = window.tailwind || {};
+        tailwind.config = { darkMode: 'class' };
+        // Apply saved theme ASAP to avoid FOUC
+        (function () {
+            try {
+                const saved = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const shouldDark = saved ? saved === 'dark' : prefersDark;
+                document.documentElement.classList.toggle('dark', shouldDark);
+            } catch (_) {}
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #4c51bf 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 12s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .gradient-bg { animation: none !important; }
+            .transition, .duration-200, .duration-300, .duration-500, .duration-700 { transition: none !important; }
+        }
+
+        .speech-bubble {
+            position: relative;
+            background: white;
+            border-radius: 1.5rem;
+        }
+        .speech-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent;
+        }
+
+        .tilt-card {
+            transform-style: preserve-3d;
+            will-change: transform;
+            transition: transform 200ms ease, box-shadow 200ms ease;
+        }
+        .tilt-card:hover {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+        }
+
+        .mobile-drawer {
+            transform: translateX(100%);
+            transition: transform 250ms ease;
+        }
+        .mobile-drawer.open {
+            transform: translateX(0);
+        }
+
+        .backdrop {
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(3px);
+        }
+
+        .parallax {
+            will-change: transform;
+            transition: transform 150ms ease-out;
+        }
+
+        .focus-outline:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+            border-radius: 0.375rem;
+        }
+
+        .sr-only { 
+            position: absolute; 
+            width: 1px; 
+            height: 1px; 
+            padding: 0; 
+            margin: -1px; 
+            overflow: hidden; 
+            clip: rect(0, 0, 0, 0); 
+            white-space: nowrap; 
+            border: 0; 
+        }
+
+        .chat-container {
+            height: 400px;
+            max-height: 400px;
+        }
+
+        .user-message {
+            background-color: #e0e7ff;
+            color: #1e3a8a;
+            align-self: flex-end;
+            border-radius: 1.5rem 1.5rem 0.5rem 1.5rem;
+        }
+
+        .ai-message {
+            background-color: #f1f5f9;
+            color: #334155;
+            align-self: flex-start;
+            border-radius: 1.5rem 1.5rem 1.5rem 0.5rem;
+        }
+        
+        .toast {
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-800 dark:bg-gray-950 dark:text-gray-100">
+    <!-- Scroll progress -->
+    <div id="scroll-progress" class="fixed top-0 left-0 h-1 bg-indigo-500 z-50 w-0"></div>
+
+    <!-- Navigation -->
+    <nav class="bg-white/90 dark:bg-gray-900/80 backdrop-blur shadow-lg sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <i data-feather="book-open" class="text-indigo-600 dark:text-indigo-400"></i>
+                    <span class="font-bold text-xl text-indigo-600 dark:text-indigo-400">PersonalizedU</span>
+                </div>
+
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="text-indigo-600 dark:text-indigo-400 font-medium focus-outline">Home</a>
+                    <a href="#features" class="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition focus-outline">Features</a>
+                    <a href="#about" class="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition focus-outline">About</a>
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition focus-outline open-ai-modal">Get Started</button>
+                    <button id="theme-toggle" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition focus-outline" aria-label="Toggle dark mode">
+                        <i data-feather="moon"></i>
+                    </button>
+                </div>
+
+                <div class="md:hidden flex items-center space-x-2">
+                    <button id="theme-toggle-sm" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition focus-outline" aria-label="Toggle dark mode">
+                        <i data-feather="moon"></i>
+                    </button>
+                    <button class="mobile-menu-button p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus-outline" aria-expanded="false" aria-controls="mobile-drawer" aria-label="Open menu">
+                        <i data-feather="menu"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer -->
+        <div id="mobile-drawer" class="fixed inset-y-0 right-0 w-72 max-w-[85vw] bg-white dark:bg-gray-900 shadow-xl mobile-drawer z-50" role="dialog" aria-modal="true" aria-label="Mobile menu">
+            <div class="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+                <div class="flex items-center space-x-2">
+                    <i data-feather="book-open" class="text-indigo-600 dark:text-indigo-400"></i>
+                    <span class="font-bold text-lg text-indigo-600 dark:text-indigo-400">PersonalizedU</span>
+                </div>
+                <button id="close-drawer" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus-outline" aria-label="Close menu">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <div class="px-4 py-6 space-y-4">
+                <a href="#" class="block px-3 py-2 rounded-md text-indigo-600 dark:text-indigo-400 font-medium hover:bg-indigo-50 dark:hover:bg-gray-800 focus-outline">Home</a>
+                <a href="#features" class="block px-3 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus-outline">Features</a>
+                <a href="#about" class="block px-3 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus-outline">About</a>
+                <button class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition focus-outline open-ai-modal">Get Started</button>
+            </div>
+        </div>
+        <div id="drawer-backdrop" class="hidden fixed inset-0 backdrop z-40"></div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg text-white py-20 md:py-28 overflow-hidden">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-12 md:mb-0" data-aos="fade-right">
+                    <h1 class="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">Your Personalized Learning Journey</h1>
+                    <p class="text-xl/8 mb-8 text-indigo-50">AI-powered recommendations tailored to your skills, interests, and goals.</p>
+                    <div class="flex flex-wrap gap-4">
+                        <button class="bg-white text-indigo-600 px-6 py-3 rounded-md font-medium hover:bg-gray-100 transition shadow focus-outline open-ai-modal">Start Assessment</button>
+                        <a href="#features" class="border-2 border-white px-6 py-3 rounded-md font-medium hover:bg-white hover:text-indigo-600 transition focus-outline">Learn More</a>
+                    </div>
+                    <div id="voice-transcript" class="mt-4 text-indigo-100 text-sm hidden"></div>
+                </div>
+                <div class="md:w-1/2" data-aos="fade-left">
+                    <div class="relative">
+                        <img id="hero-image" src="http://static.photos/education/640x360/1" alt="Learning illustration" class="rounded-lg shadow-2xl parallax">
+                        <div class="absolute -bottom-8 -right-8 bg-white text-gray-800 p-4 rounded-lg shadow-lg speech-bubble w-64">
+                            <p>Hi! I'm your AI learning assistant. Let's discover your perfect learning path!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-gray-50 dark:bg-gray-900">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-16" data-aos="fade-up">
+                <h2 class="text-3xl font-bold mb-4">How PersonalizedU Works</h2>
+                <p class="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">Our AI-powered system adapts to your unique learning style and goals</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md hover:shadow-xl transition tilt-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="bg-indigo-100 dark:bg-indigo-900/40 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+                        <i data-feather="user" class="text-indigo-600 dark:text-indigo-300 w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Personal Profile</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Tell us about your education history, current skills, and learning goals through our intuitive onboarding.</p>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md hover:shadow-xl transition tilt-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="bg-indigo-100 dark:bg-indigo-900/40 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+                        <i data-feather="bar-chart-2" class="text-indigo-600 dark:text-indigo-300 w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Skill Assessment</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Complete interactive quizzes and challenges to accurately measure your current knowledge and abilities.</p>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md hover:shadow-xl transition tilt-card" data-aos="fade-up" data-aos-delay="300">
+                    <div class="bg-indigo-100 dark:bg-indigo-900/40 w-16 h-16 rounded-full flex items-center justify-center mb-6">
+                        <i data-feather="cpu" class="text-indigo-600 dark:text-indigo-300 w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">AI Recommendations</h3>
+                    <p class="text-gray-600 dark:text-gray-300">Our engine analyzes your profile to suggest the perfect learning path with optimal content and pace.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Voice Interaction Section -->
+    <section class="py-20 bg-white dark:bg-gray-950">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0" data-aos="fade-right">
+                    <img src="http://static.photos/technology/640x360/2" alt="Voice interaction" class="rounded-lg shadow-xl">
+                </div>
+                <div class="md:w-1/2 md:pl-12" data-aos="fade-left">
+                    <h2 class="text-3xl font-bold mb-6">Voice-Enabled Learning Assistant</h2>
+                    <p class="text-gray-600 dark:text-gray-300 mb-8">Interact naturally with our AI assistant using voice commands powered by Web Speech API.</p>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 dark:bg-indigo-900/40 p-3 rounded-full mr-4">
+                                <i data-feather="mic" class="text-indigo-600 dark:text-indigo-300"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold mb-2">Voice Commands</h4>
+                                <p class="text-gray-600 dark:text-gray-300">Control your learning experience hands-free with simple voice instructions.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 dark:bg-indigo-900/40 p-3 rounded-full mr-4">
+                                <i data-feather="message-square" class="text-indigo-600 dark:text-indigo-300"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold mb-2">Conversational AI</h4>
+                                <p class="text-gray-600 dark:text-gray-300">Ask questions and get explanations in a natural, conversational way.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 dark:bg-indigo-900/40 p-3 rounded-full mr-4">
+                                <i data-feather="headphones" class="text-indigo-600 dark:text-indigo-300"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold mb-2">Audio Learning</h4>
+                                <p class="text-gray-600 dark:text-gray-300">Listen to lessons and summaries while on the go.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <button class="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition focus-outline open-ai-modal">
+                            <i data-feather="play-circle"></i><span>Try Assessment</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="gradient-bg text-white py-20">
+        <div class="max-w-4xl mx-auto px-4 text-center" data-aos="zoom-in">
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">Ready to Transform Your Learning Experience?</h2>
+            <p class="text-xl mb-8 max-w-2xl mx-auto">Join thousands of learners who have discovered their perfect learning path with PersonalizedU.</p>
+            <button class="bg-white text-indigo-600 px-8 py-4 rounded-md font-bold text-lg hover:bg-gray-100 transition shadow-lg focus-outline open-ai-modal">Start Your Free Assessment</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="about" class="bg-gray-900 text-white py-12">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <i data-feather="book-open" class="text-indigo-400"></i>
+                        <span class="font-bold text-xl">PersonalizedU</span>
+                    </div>
+                    <p class="text-gray-400">AI-powered personalized learning for everyone.</p>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-lg mb-4">Product</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#features" class="text-gray-400 hover:text-white transition focus-outline">Features</a></li>
+        
+                        <li><a href="#" class="text-gray-400 hover:text-white transition focus-outline">API</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-lg mb-4">Resources</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition focus-outline">Documentation</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition focus-outline">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition focus-outline">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-lg mb-4">Connect</h4>
+                    <div class="flex space-x-4">
+                        <a href="www.linkedin.com/in/ruchika-verma-888bb6309" class="text-gray-400 hover:text-white transition focus-outline"><i data-feather="linkedin"></i></a>
+                        <a href="https://github.com/RuchikaaVerma" class="text-gray-400 hover:text-white transition focus-outline"><i data-feather="github"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+                <p>&copy; 2025 PersonalizedU. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back-to-top -->
+    <button id="back-to-top" class="fixed bottom-6 right-6 z-40 hidden p-3 rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition focus-outline" aria-label="Back to top">
+        <i data-feather="arrow-up"></i>
+    </button>
+    
+    <!-- Toast message box -->
+    <div id="toast" class="fixed z-50 p-4 rounded-lg shadow-lg bg-gray-800 text-white toast"></div>
+
+    <!-- AI Chat Modal -->
+    <div id="ai-modal" class="hidden fixed inset-0 z-50">
+        <div id="modal-backdrop" class="absolute inset-0 backdrop"></div>
+        <div role="dialog" aria-modal="true" aria-labelledby="ai-chat-title" class="relative max-w-xl mx-auto mt-24 bg-white dark:bg-gray-900 rounded-lg shadow-2xl overflow-hidden scale-95 opacity-0 transition">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <h3 id="ai-chat-title" class="text-lg font-semibold">AI Learning Assistant</h3>
+                <button id="close-ai-modal" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus-outline" aria-label="Close modal">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <div class="flex flex-col h-full">
+                <div id="chat-messages" class="flex-grow p-6 space-y-4 overflow-y-auto chat-container">
+                    <div class="p-4 rounded-lg max-w-md ai-message">
+                        Hello! I'm your AI learning assistant. What would you like to learn today?
+                        <button class="ml-2 text-indigo-600 hover:text-indigo-800 focus:outline-none" aria-label="Read message aloud" onclick="speakMessage(this)">
+                             <i data-feather="volume-2" class="w-4 h-4 inline-block"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                    <input type="text" id="chat-input" placeholder="Type your message..." class="flex-grow rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-indigo-500 focus:border-indigo-500">
+                    <button id="voice-input-btn" class="p-2 rounded-full text-white bg-indigo-600 hover:bg-indigo-700 transition focus-outline" aria-label="Voice input">
+                        <i data-feather="mic"></i>
+                    </button>
+                    <button id="send-btn" class="p-2 rounded-full text-white bg-indigo-600 hover:bg-indigo-700 transition focus-outline" aria-label="Send message">
+                        <i data-feather="send"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js" defer></script>
+    <script src="https://unpkg.com/feather-icons" defer></script>
+    <script>
+        // Constants for API calls
+        const GEMINI_API_KEY = "AIzaSyAmHaO3hU29a4RlykzmKrpYFFaK7x90zik";
+        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=" + GEMINI_API_KEY;
+        const TTS_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=" + GEMINI_API_KEY;
+
+        // Custom toast message function
+        const showToast = (message) => {
+            const toastEl = document.getElementById('toast');
+            toastEl.textContent = message;
+            toastEl.classList.add('show');
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 3000);
+        };
+        
+        // PCM to WAV conversion utility
+        const pcmToWav = (pcmData, sampleRate) => {
+            const buffer = new ArrayBuffer(44 + pcmData.byteLength);
+            const view = new DataView(buffer);
+
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.byteLength, true);
+            writeString(view, 8, 'WAVE');
+            // FMT sub-chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // Linear PCM
+            view.setUint16(22, 1, true); // 1 channel
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true); // Byte rate
+            view.setUint16(32, 2, true); // block align
+            view.setUint16(34, 16, true); // bits per sample
+            // Data sub-chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.byteLength, true);
+
+            // Write PCM data
+            const pcmBytes = new Uint8Array(pcmData.buffer);
+            for (let i = 0; i < pcmBytes.length; i++) {
+                view.setUint8(44 + i, pcmBytes[i]);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        };
+        
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+
+        const speakMessage = async (buttonElement) => {
+            const messageText = buttonElement.closest('.ai-message').textContent.trim();
+            try {
+                const response = await fetch(TTS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: messageText }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: {
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: { voiceName: "Puck" }
+                                }
+                            }
+                        },
+                        model: "gemini-2.5-flash-preview-tts"
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('TTS API request failed with status: ' + response.status);
+                }
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                } else {
+                    console.error('Invalid audio data received from TTS API.');
+                    showToast('Could not play audio. Invalid response.');
+                }
+            } catch (error) {
+                console.error('TTS error:', error);
+                showToast('Failed to generate audio. Please try again.');
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.feather) feather.replace();
+            if (window.AOS) AOS.init({ duration: 800, easing: 'ease-in-out', once: true, offset: 80 });
+            
+            const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // Theme toggle
+            const themeButtons = document.querySelectorAll('#theme-toggle, #theme-toggle-sm');
+            const toggleTheme = () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch (_) {}
+            };
+            themeButtons.forEach(btn => btn.addEventListener('click', toggleTheme));
+
+            // Mobile drawer
+            const drawer = document.getElementById('mobile-drawer');
+            const drawerBackdrop = document.getElementById('drawer-backdrop');
+            const openBtn = document.querySelector('.mobile-menu-button');
+            const closeBtn = document.getElementById('close-drawer');
+            const openDrawer = () => {
+                drawer.classList.add('open');
+                drawerBackdrop.classList.remove('hidden');
+                openBtn?.setAttribute('aria-expanded', 'true');
+                setTimeout(() => {
+                    const focusable = drawer.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                    focusable && focusable.focus();
+                }, 0);
+            };
+            const closeDrawer = () => {
+                drawer.classList.remove('open');
+                drawerBackdrop.classList.add('hidden');
+                openBtn?.setAttribute('aria-expanded', 'false');
+                openBtn?.focus();
+            };
+            openBtn?.addEventListener('click', openDrawer);
+            closeBtn?.addEventListener('click', closeDrawer);
+            drawerBackdrop.addEventListener('click', closeDrawer);
+
+            // Parallax hero image
+            const heroImage = document.getElementById('hero-image');
+            const parallaxUpdate = () => {
+                if (!heroImage || prefersReduced) return;
+                const scrolled = window.scrollY || document.documentElement.scrollTop;
+                const translate = Math.min(scrolled * 0.08, 24);
+                heroImage.style.transform = `translateY(${translate}px)`;
+            };
+            window.addEventListener('scroll', parallaxUpdate, { passive: true });
+
+            // Tilt cards
+            const tiltCards = Array.from(document.querySelectorAll('.tilt-card'));
+            const tilt = (e) => {
+                const card = e.currentTarget;
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = ((y - centerY) / centerY) * -6;
+                const rotateY = ((x - centerX) / centerX) * 6;
+                card.style.transform = `perspective(700px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            };
+            const resetTilt = (e) => {
+                e.currentTarget.style.transform = 'perspective(700px) rotateX(0) rotateY(0)';
+            };
+            if (!prefersReduced) {
+                tiltCards.forEach(card => {
+                    card.addEventListener('mousemove', tilt);
+                    card.addEventListener('mouseleave', resetTilt);
+                });
+            }
+
+            // AI Chat Modal
+            const aiModal = document.getElementById('ai-modal');
+            const modalPanel = aiModal.querySelector('[role="dialog"]');
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const openAiButtons = document.querySelectorAll('.open-ai-modal');
+            const closeAiModal = document.getElementById('close-ai-modal');
+            const openModal = () => {
+                aiModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                requestAnimationFrame(() => {
+                    modalPanel.classList.remove('opacity-0', 'scale-95');
+                    modalPanel.classList.add('opacity-100', 'scale-100');
+                });
+                setTimeout(() => {
+                    document.getElementById('chat-input').focus();
+                }, 150);
+            };
+            const closeModal = () => {
+                modalPanel.classList.remove('opacity-100', 'scale-100');
+                modalPanel.classList.add('opacity-0', 'scale-95');
+                document.body.style.overflow = '';
+                setTimeout(() => {
+                    aiModal.classList.add('hidden');
+                }, 150);
+            };
+            openAiButtons.forEach(btn => btn.addEventListener('click', openModal));
+            closeAiModal.addEventListener('click', closeModal);
+            modalBackdrop.addEventListener('click', closeModal);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (aiModal.classList.contains('hidden') === false) closeModal();
+                    if (drawer.classList.contains('open')) closeDrawer();
+                }
+            });
+
+            // AI Chat Logic
+            const chatMessages = document.getElementById('chat-messages');
+            const chatInput = document.getElementById('chat-input');
+            const sendButton = document.getElementById('send-btn');
+            const voiceInputButton = document.getElementById('voice-input-btn');
+            let chatHistory = [{
+                role: "user",
+                parts: [{ text: "Introduce yourself as a cheerful AI learning assistant and ask me what I would like to learn about." }]
+            }];
+
+            const appendMessage = (text, role, isStreaming = false) => {
+                const messageContainer = document.createElement('div');
+                messageContainer.className = `p-4 max-w-md ${role === 'user' ? 'user-message' : 'ai-message'}`;
+                
+                const messageText = document.createElement('p');
+                messageText.textContent = text;
+                messageContainer.appendChild(messageText);
+
+                if (role === 'ai') {
+                    const speakButton = document.createElement('button');
+                    speakButton.className = "ml-2 text-indigo-600 hover:text-indigo-800 focus:outline-none";
+                    speakButton.setAttribute('aria-label', 'Read message aloud');
+                    speakButton.setAttribute('onclick', 'speakMessage(this)');
+                    speakButton.innerHTML = '<i data-feather="volume-2" class="w-4 h-4 inline-block"></i>';
+                    messageContainer.appendChild(speakButton);
+                }
+
+                chatMessages.appendChild(messageContainer);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            };
+
+            const sendMessage = async () => {
+                const userMessage = chatInput.value.trim();
+                if (userMessage === '') return;
+
+                appendMessage(userMessage, 'user');
+                chatInput.value = '';
+
+                // Add user message to chat history
+                chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+
+                // Add a placeholder for AI response
+                const loadingMessage = document.createElement('div');
+                loadingMessage.className = 'p-4 rounded-lg max-w-md ai-message animate-pulse';
+                loadingMessage.innerHTML = '<span class="animate-bounce inline-block">.</span><span class="animate-bounce inline-block delay-150">.</span><span class="animate-bounce inline-block delay-300">.</span>';
+                chatMessages.appendChild(loadingMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                try {
+                    const payload = {
+                        contents: chatHistory.map(entry => ({ role: entry.role, parts: entry.parts })),
+                        systemInstruction: {
+                            parts: [{ text: "You are a cheerful and encouraging AI learning assistant. Your goal is to provide concise, helpful, and friendly explanations of educational topics. Keep your responses to 1-2 paragraphs and always end with a question to continue the conversation." }]
+                        },
+                    };
+                    
+                    const response = await fetch(GEMINI_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('API request failed with status: ' + response.status);
+                    }
+
+                    const result = await response.json();
+                    const aiResponse = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (aiResponse) {
+                        chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+                        loadingMessage.remove();
+                        appendMessage(aiResponse, 'ai');
+                        if (window.feather) feather.replace();
+                    } else {
+                        loadingMessage.remove();
+                        appendMessage("Sorry, I couldn't generate a response. Please try again.", 'ai');
+                    }
+                    
+                } catch (error) {
+                    console.error('API Error:', error);
+                    loadingMessage.remove();
+                    appendMessage("I'm sorry, an error occurred. Please try again.", 'ai');
+                }
+            };
+            
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            sendButton.addEventListener('click', sendMessage);
+
+            // Voice-to-Text
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                recognition.interimResults = false;
+                recognition.continuous = false;
+                recognition.lang = 'en-US';
+
+                voiceInputButton.addEventListener('click', () => {
+                    try {
+                        recognition.start();
+                        showToast("Listening for your voice...");
+                        voiceInputButton.disabled = true;
+                    } catch (err) {
+                        console.error('Speech recognition error:', err);
+                        showToast("Speech recognition is already active.");
+                    }
+                });
+
+                recognition.addEventListener('result', (e) => {
+                    const transcript = Array.from(e.results)
+                        .map(result => result[0])
+                        .map(result => result.transcript)
+                        .join('');
+                    chatInput.value = transcript;
+                    voiceInputButton.disabled = false;
+                    sendMessage();
+                });
+
+                recognition.addEventListener('error', (e) => {
+                    console.error('Speech recognition error:', e.error);
+                    showToast('Voice input error. Please try again.');
+                    voiceInputButton.disabled = false;
+                });
+            } else {
+                voiceInputButton.style.display = 'none';
+                console.warn('Speech Recognition not supported in this browser.');
+                showToast("Your browser does not support voice input.");
+            }
+
+            // Scroll progress + back-to-top
+            const progress = document.getElementById('scroll-progress');
+            const backToTop = document.getElementById('back-to-top');
+            const onScroll = () => {
+                const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = height > 0 ? (scrollTop / height) * 100 : 0;
+                progress.style.width = scrolled + '%';
+                if (scrollTop > 400) backToTop.classList.remove('hidden'); else backToTop.classList.add('hidden');
+            };
+            window.addEventListener('scroll', onScroll, { passive: true });
+            backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        });
+    </script>
+</body>
+</html>

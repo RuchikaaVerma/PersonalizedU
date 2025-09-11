@@ -1,0 +1,17 @@
+use a JavaScript library or a service that provides a ready-made chat widget. This widget will handle the user's input, display the bot's responses, and manage the conversational state.
+Choose a Bot Service: Select a platform like Dialogflow,
+Create the Bot Logic: In your chosen service, define the bot's conversation flow. For the "PersonalizedU" website, your bot should be able to:
+
+Greet the user.
+
+Explain what the website does.
+
+Direct users to the assessment ("open-assessment").
+
+Answer frequently asked questions (FAQs) like "What are the features?" or "How does the AI work?".
+
+Integrate the Chat Widget: This is the key step.
+
+Most bot services provide a small JavaScript snippet to embed on your website. This snippet creates the chat button and handles the communication between your user's browser and the bot's back-end.
+
+You'll add this <script> tag right before the closing </body> tag, similar to how the existing scripts are placed.
