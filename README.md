@@ -78,15 +78,6 @@ Results are returned to the chatbot in real-time, with summaries, insights, and 
 
 The user receives guidance and can set learning goals, track progress, and receive new suggestions.
 
-🚀 Future Roadmap
-
-Support multilingual learning resources using advanced NLP models
-
-Integrate voice recognition for hands-free interaction
-
-Expand conversational capabilities with adaptive learning strategies
-
-Provide analytics dashboards for deeper performance tracking
 
 📌 Conclusion
 
