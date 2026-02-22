@@ -1,84 +1,246 @@
-# PersonalizedU
-📚 AI-Powered Personalized Learning Path Recommender
+# 🎓 PersonalizedU  
+## 🚀 AI-Powered Personalized Learning Assistant
 
-✅ Overview
+> Transforming generic online learning into adaptive, intelligent, and conversational education.
 
-This project is an AI-driven personalized learning assistant that integrates with Dialogflow Webhook (such as U-Project/dialogflow-webhook
-) to provide conversational interfaces for recommending learning paths and analyzing educational resources. The assistant interacts with users through chatbots powered by Dialogflow, while the backend intelligence uses machine learning algorithms to tailor learning journeys and provide actionable insights.
+---
 
-Users receive curated suggestions for learning materials, structured plans, and progress feedback—all through an interactive chatbot experience. This solution leverages AI to make learning more accessible, efficient, and user-centric.
+# 🏆 Problem Statement
 
-🎯 Objective
+Traditional online learning platforms are:
 
-The main purpose of this project is to:
+- ❌ One-size-fits-all  
+- ❌ Overwhelming with irrelevant content  
+- ❌ Not adaptive to user progress  
+- ❌ Lacking conversational guidance  
 
-Provide a seamless conversational experience for learners using Dialogflow Webhook.
+Learners often struggle to find the *right* resources tailored to their skills, goals, and pace.
 
-Recommend personalized learning paths based on individual preferences and goals.
+---
 
-Analyze educational content to highlight relevant resources and assess quality.
+# 💡 Our Solution
 
-Enable users to track their progress and adjust learning strategies accordingly.
+**PersonalizedU** is an AI-powered learning assistant that:
 
-Integrate AI-driven insights into a chatbot framework for real-time assistance.
+✅ Understands users through conversation  
+✅ Assesses skill levels dynamically  
+✅ Recommends personalized learning paths  
+✅ Tracks real-time progress  
+✅ Adapts recommendations over time  
 
-📲 Dialogflow Webhook Integration
+All through a chatbot-driven interface.
 
-This project uses the U-Project/dialogflow-webhook as the backbone for conversational interactions:
+---
 
-✔ Natural Language Understanding
-Dialogflow interprets user queries about learning topics, preferences, and schedules.
+# 🧠 How It Works
+User (Frontend UI)
+↓
+Dialogflow (NLP Intent Detection)
+↓
+Node.js Webhook (Intent Router)
+↓
+Django REST API (Business Logic + AI Engine)
+↓
+Database (Profiles, Courses, Assessments)
 
-✔ Webhook Processing
-Incoming requests are sent to our backend service where AI models analyze the query and generate tailored learning recommendations.
+---
 
-✔ Context Management
-Dialogflow's contexts keep track of user interactions, allowing the assistant to build upon previous conversations and refine suggestions.
+# ✨ Key Features
 
-✔ Response Handling
-The webhook returns structured data—suggested courses, summaries, and next steps—which is displayed to the user in the chatbot interface.
+## 🤖 Conversational AI Assistant
+- Powered by Dialogflow
+- Detects learning goals & user intent
+- Provides intelligent responses
 
-✨ Key Features
+## 📝 Skill Assessment Engine
+- Dynamic quiz system
+- JSON-based question structure
+- Automated scoring
+- Stores assessment history
 
-✔ AI-Powered Recommendations – Personalized learning paths based on user preferences
-✔ Content Analysis – Uses NLP to evaluate articles, tutorials, and videos
-✔ Dialogflow Chatbot Integration – Enables conversational interaction through web and mobile interfaces
-✔ Progress Monitoring – Tracks learning achievements and suggests improvements
-✔ Trusted Resource Filtering – Highlights high-quality educational materials
-✔ Feedback Loop – Adapts recommendations based on user interactions
+## 🎯 Personalized Recommendations
+- Filters by experience level
+- Matches interests & goals
+- Excludes completed courses
+- Ranks by rating
 
-🛠 Technology Stack
+## 📊 Progress Tracking
+- Tracks completion percentage
+- Logs course interactions
+- Updates learning paths
 
-Dialogflow Webhook Integration – U-Project/dialogflow-webhook
- for chatbot interactions
+## 🎨 Modern UI
+- Animated responsive design
+- Pink/Blue theme switching
+- Voice interaction support
 
-Backend (Python/Flask/Django) – Handles API requests and integrates with AI models
+---
 
-AI/ML Algorithms – NLP, recommendation systems, sentiment analysis, and content summarization
+# 🛠 Tech Stack
 
-Databases – PostgreSQL/MongoDB for storing user data, preferences, and learning history
+### Frontend
+- HTML5
+- CSS3 (Animated UI)
+- JavaScript
+- Web Speech API
 
-Frontend – Web or mobile interfaces powered by React.js or Vue.js
+### Backend
+- Python 3.11
+- Django
+- Django REST Framework
+- JWT Authentication (SimpleJWT)
 
-Cloud Services – AWS/GCP for deployment, scalability, and storage
+### Webhook
+- Node.js
+- Express.js
+- Axios
 
-Security – OAuth 2.0 for authentication, HTTPS for secure communication
+### NLP
+- Google Dialogflow
 
-📂 How It Works
+### Database
+- SQLite (Dev)
+- PostgreSQL (Production Ready)
 
-The user interacts with the chatbot powered by Dialogflow Webhook.
+---
 
-User preferences, interests, and experience levels are captured through conversation.
+# 🔐 Authentication Flow
 
-The webhook forwards requests to the backend AI system.
+1️⃣ Login  
+POST /api/auth/login/
 
-AI models process the data and recommend learning paths and resources.
+2️⃣ Receive JWT Token  
 
-Results are returned to the chatbot in real-time, with summaries, insights, and actionable steps.
+3️⃣ Secure API Access  
+Authorization: Bearer <token>
 
-The user receives guidance and can set learning goals, track progress, and receive new suggestions.
+Protected endpoints:
+- Profile
+- Recommendations
+- Progress
+- Assessment submission
+
+---
+
+# 📂 Project Structure
+U-Project/
+│
+├── backend/
+│   ├── __pycache__/
+│   ├── learning/
+│   │   ├── __pycache__/
+│   │   ├── migrations/
+│   │   ├── admin.py
+│   │   ├── models.py
+│   │   ├── urls.py
+│   │   ├── views.py
+│   │
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── manage.py
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│
+├── dialogflow-webhook/
+│   ├── node_modules/
+│   ├── index.js
+│   ├── package.json
+
+---
+
+# 🔄 Demo Flow
+
+### Scenario: User wants to learn Python
+
+1. User says: *"I want to learn Python"*
+2. Dialogflow detects → `set-goal`
+3. Webhook calls Django API
+4. Profile updates
+5. Recommendation engine filters courses
+6. Personalized courses displayed
+
+---
+
+# ⚙️ How To Run Locally
+
+## 1️⃣ Backend
+python -m venv env
+env\Scripts\activate
+pip install django djangorestframework djangorestframework-simplejwt django-cors-headers
+cd backend
+python manage.py migrate
+python manage.py runserver
+
+Backend:  
+`http://127.0.0.1:8000/`
+
+---
+
+## 2️⃣ Webhook
+cd dialogflow-webhook
+npm install
+node index.js
+
+Webhook:  
+`http://localhost:3000/`
+
+---
+
+## 3️⃣ Dialogflow
+
+Set Fulfillment URL to:http://localhost:3000/webhook
+
+Enable webhook for all custom intents.
+
+---
+
+## 4️⃣ Frontend
+
+Open:main.html
+
+---
+
+# 🚀 Future Enhancements
+
+- 🔥 ML-based recommendation (TF-IDF / SVD)
+- 📈 Adaptive learning path optimization
+- ☁ Cloud deployment (GCP / AWS)
+- 🐳 Docker containerization
+- 📊 Analytics dashboard
+- 📱 Mobile responsive PWA version
+
+---
+
+# 🏁 Hackathon Value Proposition
+
+✔ Combines NLP + Backend AI logic  
+✔ Real-world scalable architecture  
+✔ Secure authentication system  
+✔ Modular microservice-ready design  
+✔ Expandable to ML-driven personalization  
+
+This is not just a chatbot — it’s an adaptive AI learning ecosystem.
+
+---
+
+# 👩‍💻 Team
+
+**Ruchika Verma**  
+AI & Machine Learning Enthusiast  
+Full-Stack Developer  
+
+---
+
+# 📌 Status
+
+✅ Dialogflow Integration  
+✅ Django Backend API  
+✅ JWT Authentication  
+✅ Recommendation Engine  
+✅ Assessment System  
+✅ Progress Tracking  
+🚀 Deployment Ready
 
 
-📌 Conclusion
 
-By combining Dialogflow Webhook with AI-powered content analysis and recommendation engines, this project creates an intuitive, adaptive, and personalized learning experience. It empowers learners to navigate their educational journey confidently, efficiently, and interactively—right from a chatbot interface.
