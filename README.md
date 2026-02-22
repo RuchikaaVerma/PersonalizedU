@@ -18,7 +18,7 @@ Learners often struggle to find the *right* resources tailored to their skills, 
 
 ---
 
-# 💡 Our Solution
+# 💡 Solution
 
 **PersonalizedU** is an AI-powered learning assistant that:
 
