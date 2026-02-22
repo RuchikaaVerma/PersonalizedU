@@ -212,7 +212,7 @@ Open:main.html
 
 ---
 
-# 🏁 Hackathon Value Proposition
+# 🏁 Value Proposition
 
 ✔ Combines NLP + Backend AI logic  
 ✔ Real-world scalable architecture  
