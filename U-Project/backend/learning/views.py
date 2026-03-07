@@ -1,14 +1,48 @@
+import json
+import re
+import requests
+
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+
 from .models import (
     UserProfile, Course, Assessment,
     AssessmentResult, UserCourseInteraction,
     LearningPath, Progress
 )
+
+
+# ── OLLAMA CONFIG ─────────────────────────────────────
+OLLAMA_URL   = "http://localhost:11434/v1/chat/completions"
+OLLAMA_MODEL = "tinyllama"
+
+
+def call_ollama(messages, max_tokens=512, temperature=0.7):
+    """
+    Helper — calls local Ollama and returns the reply string.
+    Raises requests.exceptions.ConnectionError if Ollama is not running.
+    """
+    resp = requests.post(
+        OLLAMA_URL,
+        json={
+            "model":       OLLAMA_MODEL,
+            "messages":    messages,
+            "max_tokens":  max_tokens,
+            "temperature": temperature,
+            "stream":      False,
+        },
+        timeout=60,
+    )
+    print("Ollama status:", resp.status_code)       # visible in Django terminal
+    print("Ollama response:", resp.text[:300])      # visible in Django terminal
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
 
 
 # ── AUTH ──────────────────────────────────────────────
@@ -126,7 +160,6 @@ def submit_assessment(request):
     assessment = get_object_or_404(Assessment, pk=assessment_id)
     questions  = assessment.questions
 
-    # Calculate score
     correct = 0
     for i, q in enumerate(questions):
         if user_answers.get(str(i)) == q.get('answer'):
@@ -149,58 +182,49 @@ def submit_assessment(request):
     })
 
 
-# ── RECOMMEND ─────────────────────────────────────────
+# ── RECOMMEND (rule-based) ────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def recommend(request):
     try:
-        user_profile = UserProfile.objects.get(user=request.user)
-        user_skills    = user_profile.skills
+        user_profile   = UserProfile.objects.get(user=request.user)
         user_interests = user_profile.interests
         user_level     = user_profile.experience_level
     except UserProfile.DoesNotExist:
-        # No profile yet — return all beginner courses
-        courses = Course.objects.filter(difficulty='beginner')[:5]
+        fallback = Course.objects.filter(difficulty='beginner')[:5]
         return Response([{
             'id': c.id, 'title': c.title,
             'topic': c.topic, 'difficulty': c.difficulty,
             'url': c.url, 'rating': c.rating
-        } for c in courses])
+        } for c in fallback])
 
-    # Get courses matching interests and level
-    matched = Course.objects.filter(
-        difficulty=user_level
-    )
+    matched = Course.objects.filter(difficulty=user_level)
 
-    # Filter by interests if available
     if user_interests:
-        from django.db.models import Q
         query = Q()
         for interest in user_interests:
             query |= Q(topic__icontains=interest)
         matched = matched.filter(query)
 
-    # Exclude already completed courses
     completed_ids = UserCourseInteraction.objects.filter(
         user=request.user, completed=True
     ).values_list('course_id', flat=True)
 
     matched = matched.exclude(id__in=completed_ids).order_by('-rating')[:6]
 
-    # Fallback if no matches
     if not matched:
         matched = Course.objects.exclude(
             id__in=completed_ids
         ).order_by('-rating')[:6]
 
     return Response([{
-        'id':         c.id,
-        'title':      c.title,
-        'topic':      c.topic,
-        'difficulty': c.difficulty,
-        'url':        c.url,
-        'rating':     c.rating,
+        'id':               c.id,
+        'title':            c.title,
+        'topic':            c.topic,
+        'difficulty':       c.difficulty,
+        'url':              c.url,
+        'rating':           c.rating,
         'duration_minutes': c.duration_minutes,
     } for c in matched])
 
@@ -236,7 +260,7 @@ def log_interaction(request):
 
     course = get_object_or_404(Course, pk=course_id)
 
-    interaction, _ = UserCourseInteraction.objects.update_or_create(
+    UserCourseInteraction.objects.update_or_create(
         user=request.user,
         course=course,
         defaults={
@@ -253,3 +277,209 @@ def log_interaction(request):
     )
 
     return Response({'message': 'Interaction logged successfully'})
+
+
+# ══════════════════════════════════════════════════════
+#   OLLAMA-POWERED ENDPOINTS
+# ══════════════════════════════════════════════════════
+
+# ── CHAT (proxy for frontend) ─────────────────────────
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def ollama_chat(request):
+    messages    = request.data.get('messages', [])
+    max_tokens  = request.data.get('max_tokens', 512)
+    temperature = request.data.get('temperature', 0.7)
+
+    if not messages:
+        return Response(
+            {'error': 'messages field is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # ── Fix: TinyLlama doesn't support 'system' role ──
+    # Convert system messages to user messages so TinyLlama doesn't crash
+    cleaned = []
+    for m in messages:
+        if m.get('role') == 'system':
+            cleaned.append({
+                'role':    'user',
+                'content': f"[System instructions]: {m['content']}"
+            })
+        elif m.get('role') == 'assistant':
+            # TinyLlama uses 'assistant' correctly — keep as-is
+            cleaned.append(m)
+        else:
+            cleaned.append(m)
+
+    try:
+        reply = call_ollama(cleaned, max_tokens=max_tokens, temperature=temperature)
+        return Response({
+            "choices": [{
+                "message": {
+                    "role":    "assistant",
+                    "content": reply
+                }
+            }]
+        })
+
+    except requests.exceptions.ConnectionError:
+        return Response(
+            {'error': 'Ollama is not running. Start it with: ollama serve'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ── AI RECOMMEND (Ollama explains WHY) ───────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ai_recommend(request):
+    try:
+        user_profile = UserProfile.objects.get(user=request.user)
+    except UserProfile.DoesNotExist:
+        return Response(
+            {'error': 'Please complete your profile first.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    prompt = f"""
+A learner has the following profile:
+- Experience level : {user_profile.experience_level}
+- Current skills   : {', '.join(user_profile.skills)   or 'none listed'}
+- Interests        : {', '.join(user_profile.interests) or 'none listed'}
+- Goals            : {', '.join(user_profile.goals)     or 'none listed'}
+
+Suggest exactly 3 specific learning topics they should focus on next.
+For each topic give a one-sentence reason tailored to their profile.
+
+Respond ONLY with a valid JSON array — no markdown, no explanation:
+[{{"topic": "...", "reason": "..."}}, ...]
+""".strip()
+
+    try:
+        raw = call_ollama(
+            [{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.5,
+        )
+        clean = re.sub(r'```(?:json)?|```', '', raw).strip()
+        match = re.search(r'\[.*\]', clean, re.DOTALL)
+        suggestions = json.loads(match.group()) if match else []
+        return Response({'ai_suggestions': suggestions})
+
+    except requests.exceptions.ConnectionError:
+        return Response(
+            {'error': 'Ollama is not running. Start it with: ollama serve'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    except (json.JSONDecodeError, AttributeError):
+        return Response({'ai_suggestions': [], 'raw': raw})
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ── AI ASSESSMENT GENERATOR ───────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_assessment(request):
+    topic         = request.data.get('topic', 'General Programming')
+    num_questions = min(int(request.data.get('num_questions', 5)), 10)
+
+    prompt = f"""
+Create a multiple-choice quiz about "{topic}" with exactly {num_questions} questions.
+
+Rules:
+- Each question has exactly 4 options labelled A, B, C, D.
+- The answer field must be the full text of the correct option (not just A/B/C/D).
+- Questions should be appropriate for a learner.
+
+Respond ONLY with a valid JSON array — no markdown, no explanation:
+[
+  {{
+    "question": "...",
+    "options":  ["...", "...", "...", "..."],
+    "answer":   "..."
+  }}
+]
+""".strip()
+
+    try:
+        raw   = call_ollama(
+            [{"role": "user", "content": prompt}],
+            max_tokens=1000,
+            temperature=0.6,
+        )
+        clean = re.sub(r'```(?:json)?|```', '', raw).strip()
+        match = re.search(r'\[.*\]', clean, re.DOTALL)
+        questions = json.loads(match.group()) if match else []
+
+        return Response({
+            'topic':     topic,
+            'questions': questions,
+        })
+
+    except requests.exceptions.ConnectionError:
+        return Response(
+            {'error': 'Ollama is not running. Start it with: ollama serve'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    except (json.JSONDecodeError, AttributeError):
+        return Response({'questions': [], 'raw': raw})
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ── AI COURSE EXPLAINER ───────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def explain_course(request, pk):
+    course = get_object_or_404(Course, pk=pk)
+
+    prompt = f"""
+Explain the following course to a {course.difficulty}-level learner in 2-3 short paragraphs:
+
+Course title : {course.title}
+Topic        : {course.topic}
+Description  : {course.description}
+
+Focus on: what they will learn, why it matters, and what they can build after completing it.
+Keep the tone friendly and encouraging.
+""".strip()
+
+    try:
+        explanation = call_ollama(
+            [{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.6,
+        )
+        return Response({
+            'course_id':    course.id,
+            'course_title': course.title,
+            'explanation':  explanation,
+        })
+
+    except requests.exceptions.ConnectionError:
+        return Response(
+            {'error': 'Ollama is not running. Start it with: ollama serve'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

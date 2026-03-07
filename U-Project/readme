@@ -14,4 +14,4 @@ Integrate the Chat Widget: This is the key step.
 
 Most bot services provide a small JavaScript snippet to embed on your website. This snippet creates the chat button and handles the communication between your user's browser and the bot's back-end.
 
-You'll add this <script> tag right before the closing </body> tag, similar to how the existing scripts are placed.
+You'll add this <script> tag right before the closing </body> tag, similar to how the existing scripts are placed.C:\PersonlizedU\PersonalizedU\U-Project\backend C:\PersonlizedU\PersonalizedU\U-Project
